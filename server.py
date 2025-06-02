@@ -164,7 +164,7 @@ def com_LIST():
     message = ""
     meta = loadMetadata()
     if not files:
-        message = "There are no files on the server."
+        message = "There are no files on the server.\n"
     else:
         for file in files:
             if file in meta:
