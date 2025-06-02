@@ -4,9 +4,11 @@ Student number: 7891649
 Course:         A01 - COMP3010
 Instructor:     Dr. Saulo dos Santos
 
-Assignment 1
+Assignment 2
 
 server.py
+    From Assignment 1:
+
     a stateful file-sharing server. Allows clients to connect and authenticate, 
     upload, download, list, and delete files in a shared server environment.
 

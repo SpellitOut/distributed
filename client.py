@@ -4,9 +4,11 @@ Student number: 7891649
 Course:         A01 - COMP3010
 Instructor:     Dr. Saulo dos Santos
 
-Assignment 1
+Assignment 2
 
 client.py
+    From Assignment 1:
+    
     A client to connect to server.py and run commands through. Provides the user with a simple command line interface.
 
     Can change the HOST to be match the host ip address of the server's machine
