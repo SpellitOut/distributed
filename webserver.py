@@ -51,6 +51,36 @@ def talk_to_file_server(username: str, command: str):
         print(f"[ERROR] File server connection failed: {e}")
         return None
     
+def build_http_response(status_code=200, status_text="OK", body="", content_type="text/plain", headers=None):
+
+    if isinstance(body, str):
+        bytes = body.encode()
+    else:
+        bytes = body # handles raw binary if body is not a string
+    
+    length = len(bytes)
+
+    # Default Headers #
+    default_headers = [
+        ("Content-Length", length),
+        ("Content-Type", content_type),
+    ]
+
+    # Extra headers (passed by parameter) #
+    if headers:
+        for header in headers:
+            default_headers.append(header)
+
+    response = f"HTTP/1.1 {status_code} {status_text}\r\n"
+    for key, val in default_headers:
+        response += f"{key} {val}\r\n"
+
+    response += "\r\n"
+
+    print("Response", response)
+
+    return response.encode + bytes
+
 def handle_client(conn, addr):
     try:
         request = conn.recv(1024).decode()
@@ -70,14 +100,15 @@ def handle_client(conn, addr):
             fs_response = talk_to_file_server(username, "LIST")
             if fs_response is not None:
                 body = fs_response.strip()
-                response = (
-                    "HTTP/1.1 200 OK\r\n"
-                    "Content-Type: application/json\r\n"
-                    "Access-Control-Allow-Origin: *\r\n"
-                    f"Content-Length: {len(body)}\r\n"
-                    "\r\n"
-                    f"{body}"
-                )
+                response = build_http_response(200, "OK", body, "application/json")
+                # response = (
+                #     "HTTP/1.1 200 OK\r\n"
+                #     "Content-Type: application/json\r\n"
+                #     "Access-Control-Allow-Origin: *\r\n"
+                #     f"Content-Length: {len(body)}\r\n"
+                #     "\r\n"
+                #     f"{body}"
+                #)
             else:
                 response = (
                     "HTTP/1.1 502 Bad Gateway\r\n"
