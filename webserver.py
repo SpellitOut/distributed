@@ -1,6 +1,7 @@
 import socket as sock
 import sys
 import threading
+import os
 
 #-------------------------------
 # Load the configured Host and Port for webserver socket to bind to
@@ -50,6 +51,7 @@ def build_http_response(status_code=200, status_text="OK", body="", content_type
     return response.encode() + bytes
 
 class HTTPResponses:
+    BAD_REQUEST = build_http_response(400, "Bad Request", "Bad Request", "text/plain")
     UNAUTHORIZED = build_http_response(401, "Unauthorized", "Unauthorized", "text/plain")
     NOT_FOUND = build_http_response(404, "Not Found", "Not Found", "text/plain")
     INTERNAL_SERVER_ERROR = build_http_response(500, "Internal Server Error", "Internal Server Error", "text/plain")
@@ -202,6 +204,27 @@ def handle_upload(username, filename, filesize, body):
         print(f"[ERROR] File server upload failed: {e}")
         return HTTPResponses.INTERNAL_SERVER_ERROR
 
+def handle_login(body):
+    """
+    Creates a cookie to login a user with a username supplied by the request body.
+    Returns a formatted HTTP Response
+    """
+    username = body.decode().strip() # parse the body of our request
+    if username:
+        # Set cookie with 5 year expiration AND HttpOnly
+        cookie = f"username={username}; HttpOnly; Path=/; Max-Age=157680000" 
+        response = build_http_response(200, "OK", f"Logged in as {username}", "text/plain", headers=[("Set-Cookie", cookie)])
+    else:
+        response = build_http_response(400, "Bad Request", "Username Required", "text/plain")
+    return response
+
+def handle_logout():
+    """
+    Clears the username cookie to log out the user and returns a formatted HTTP Response
+    """
+    cookie = f"username=; HttpOnly; Path=/; Max-Age=0" # Clear the username cookie and expire it
+    return build_http_response(200, "OK", "Logged out", "text/plain", headers=[("Set-Cookie", cookie)])
+
 def parse_pathquery(path_in):
     """
     Parses a path and returns the path and query if there is one
@@ -229,6 +252,17 @@ def parse_pathquery(path_in):
     return path, query
 
 def parse_http_request(lines):
+    """
+    Parses the headers from an HTTP request
+
+    Returns:
+        method (str): the request method
+        path_in (str): the request path
+        headers (dict): dictionary of the headers
+    """
+    if not lines or len(lines[0].split()) < 3:
+        return None, None, {}
+
     # Parse HTTP request line
     method, path_in, _ = lines[0].split()
 
@@ -243,6 +277,9 @@ def parse_http_request(lines):
     return method, path_in, headers
 
 def parse_cookies(headers):
+    """
+    Parses headers for any cookies and returns them as a dictionary
+    """
     cookie_header = headers.get("Cookie")
     cookies = {}
 
@@ -255,6 +292,16 @@ def parse_cookies(headers):
     return cookies
 
 def receive_http_request(conn):
+    """
+    Receives in an entire HTTP request, including any headers and body that it may contain
+    
+    Returns:
+        method (str): the request method
+        path_in (str): the request path
+        headers (dict): dictionary of the headers in the request
+        content_length (int): the Content-Length of the request
+        body (bytearray): the bytes of the body
+    """
     buffer = b""
 
     # Load up to the end of headers
@@ -281,25 +328,41 @@ def receive_http_request(conn):
 
 def handle_client(conn, addr):
     try:
+
         method, path_in, headers, content_length, body = receive_http_request(conn)
+        if not method or not path_in: # skip if request is malformed
+            return
         print(f"[INFO] Request from {addr}:\n{method} {path_in}")      
         path, query = parse_pathquery(path_in) # Split path and query
         cookies = parse_cookies(headers)
         username = cookies.get("username") # Get username (if logged in)
 
-        if path == "/api/login":
-            if method == "POST":
-                ####
-                ####
-                response = HTTPResponses.NOT_IMPLEMENTED
-                ####
-                ####
-            elif method == "DELETE":
-                ####
-                ####
-                response = HTTPResponses.NOT_IMPLEMENTED
-                ####
-                ####
+        if path == "/" and method == "GET":
+            if os.path.exists("index.html"):
+                with open("index.html", "r") as f:
+                    response = build_http_response(200, "OK", body=f.read(), content_type="text/html")
+                    f.close()
+            else:
+                response = HTTPResponses.NOT_FOUND
+        elif path == "/style.css" and method == "GET":
+            if os.path.exists("style.css"):
+                with open("style.css", "r") as f:
+                    response = build_http_response(200, "OK", body=f.read(), content_type="text/css")
+                    f.close()
+            else:
+                response = HTTPResponses.NOT_FOUND
+        elif path == "/script.js" and method == "GET":
+            if os.path.exists("script.js"):
+                with open("script.js", "r") as f:
+                    response = build_http_response(200, "OK", body=f.read(), content_type="application/javascript")
+                    f.close()
+            else:
+                response = HTTPResponses.NOT_FOUND
+        elif path == "/api/login":
+            if method == "POST": # User trying to Login
+                response = handle_login(body)
+            elif method == "DELETE": # User trying to Logout
+                response = handle_logout()
             else:
                 response = HTTPResponses.NOT_FOUND
         elif path == "/api/list" and method == "GET":
@@ -336,9 +399,11 @@ def handle_client(conn, addr):
 
         conn.sendall(response)   
 
+    except ValueError as e:
+        print(f"[WARN] Malformed request from {addr}: {e}")
+        conn.sendall(HTTPResponses.BAD_REQUEST)
     except Exception as e:
         print(f"Error: handle_client error: {e}")
-        #respond(conn, 500, "Internal Server Error")
     finally:
         conn.close()
 

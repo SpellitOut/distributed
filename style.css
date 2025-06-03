@@ -1,0 +1,14 @@
+body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh; /* Full viewport height */
+    margin: 0;
+    font-family: sans-serif;
+    background-color: #f9f9f9; /* Optional: light background */
+}
+
+h1 {
+    color: darkgreen;
+}
