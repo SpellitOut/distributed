@@ -161,6 +161,7 @@ def get(clientSocket, filename):
                     break
                 f.write(packet)
                 received += len(packet)
+                clientSocket.sendall("CONTINUE\n".encode("utf-8"))
 
         # ping server so it knows we are DONE
         clientSocket.sendall("DONE\n".encode("utf-8"))

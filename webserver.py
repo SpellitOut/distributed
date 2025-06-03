@@ -113,7 +113,11 @@ def handle_delete(username, filename):
     return response
 
 def handle_download(username, filename):
-    """Handles calling the get <filename> from the file server. Returns the formatted http response"""
+    """
+    Handles calling the get <filename> from the file server. Returns the formatted http response
+    Webserver sends command and awaits an okay from the server. 
+    Then server sends the file size, then sends the file as raw bytes.
+    """ 
     try:
         with sock.create_connection((FILESERVER_HOST, FILESERVER_PORT)) as fileserver_socket:
             login_fileserver(username, fileserver_socket) # Login as user
@@ -153,16 +157,50 @@ def handle_download(username, filename):
                  #  to the filename while testing with Insomnia
                 ("Content-Disposition", f'attachment; filename="{incoming_filename}"'),
             ]
-            
+
             response = build_http_response(200, "OK", body=file_data, headers=headers)
             return response
     
     except Exception as e:
-        #print(f"[ERROR] File server connection failed: {e}")
+        print(f"[ERROR] File server download failed: {e}")
         return HTTPResponses.INTERNAL_SERVER_ERROR
 
-def handle_upload(username, filename):
-    pass
+def handle_upload(username, filename, filesize, body):
+    """
+    Webserver attempts to push a file filename over clientSocket. 
+    Webserver sends command and awaits an okay from the server. 
+    Then Webserver sends the file size, then sends the file as raw bytes.
+    """
+    try:
+        with sock.create_connection((FILESERVER_HOST, FILESERVER_PORT)) as fileserver_socket:
+            login_fileserver(username, fileserver_socket) # Login as user
+
+            fileserver_socket.sendall(f"PUSH {filename}\n".encode()) # Send the initial command
+
+            server_resp = fileserver_socket.recv(1024).decode("utf-8") # Expect READY from the server
+            if not server_resp.startswith("READY"):
+                return HTTPResponses.INTERNAL_SERVER_ERROR
+            print(f"Pushing file: {filename}\n")
+
+            fileserver_socket.sendall(f"{filesize}\n".encode()) # send filesize to server
+
+            server_resp = fileserver_socket.recv(1024).decode("utf-8") # Expect OK from the server
+            if not server_resp.startswith("OK"):
+                return HTTPResponses.INTERNAL_SERVER_ERROR
+            
+            # Send the file
+            sent_bytes = 0
+            while sent_bytes < filesize:
+                fileserver_socket.sendall(body[sent_bytes:sent_bytes+1024])
+                sent_bytes += 1024
+
+            server_resp = fileserver_socket.recv(1024).decode() # final shake
+            print(f"Server Response: {server_resp}")
+            return build_http_response(200, "OK", body=server_resp)
+
+    except Exception as e:
+        print(f"[ERROR] File server upload failed: {e}")
+        return HTTPResponses.INTERNAL_SERVER_ERROR
 
 def parse_pathquery(path_in):
     """
@@ -216,26 +254,38 @@ def parse_cookies(headers):
                 cookies[key] = val
     return cookies
 
+def receive_http_request(conn):
+    buffer = b""
+
+    # Load up to the end of headers
+    while b"\r\n\r\n" not in buffer:
+        data = conn.recv(1024)
+        if not data:
+            break
+        buffer += data
+
+    header_end = buffer.find(b"\r\n\r\n") # find the end of the header, because our buffer MAY contain body after it already
+    header_bytes = buffer[:header_end]
+    body_start = header_end + 4
+    body = buffer[body_start:] # we now MAY have part of the body in the buffer 
+
+    header_lines = header_bytes.decode().splitlines()
+    method, path_in, headers = parse_http_request(header_lines)
+
+    # If there is a body, we need to get content length, then read the rest of the body
+    content_length = int(headers.get("Content-Length", 0)) # defaults to 0 if we don't get
+    while len(body) < content_length:
+        body += conn.recv(min(1024, content_length - len(body))) # receive more body bytes
+
+    return method, path_in, headers, content_length, body
 
 def handle_client(conn, addr):
     try:
-        request = conn.recv(1024).decode()
-        if not request:
-            return
-        
-        print(f"[INFO] Request from {addr}:\n{request.splitlines()[0]}")
-        lines = request.splitlines()
-        if not lines:
-            return
-        
-        method, path_in, headers = parse_http_request(lines)
+        method, path_in, headers, content_length, body = receive_http_request(conn)
+        print(f"[INFO] Request from {addr}:\n{method} {path_in}")      
         path, query = parse_pathquery(path_in) # Split path and query
         cookies = parse_cookies(headers)
-
-        # Get username (if logged in)
-        username = cookies.get("username")
-
-        #USERNAME = "ian" ### SHOULD NOT BE HARDCODED
+        username = cookies.get("username") # Get username (if logged in)
 
         if path == "/api/login":
             if method == "POST":
@@ -261,17 +311,18 @@ def handle_client(conn, addr):
             if username:
                 filename = query.get("file")
                 response = handle_download(username, filename)
-                ####
-                ####
-                #response = HTTPResponses.NOT_IMPLEMENTED
-                ####
-                ####
             else:
                 response = HTTPResponses.UNAUTHORIZED
         elif path == "/api/push" and method == "POST":
             if username:
                 # upload a new file on the server
-                response = HTTPResponses.NOT_IMPLEMENTED
+                filename = query.get("file")
+                response = handle_upload(username, filename, content_length, body)
+                ####
+                #### NEED TO GET THE BODY OF THE POST, as well as Content-Length
+                #### AND PASS THAT INTO handle_upload
+                ####
+                #response = HTTPResponses.NOT_IMPLEMENTED
             else:
                 response = HTTPResponses.UNAUTHORIZED
         elif path == "/api/delete" and method == "DELETE":
