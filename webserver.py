@@ -103,6 +103,15 @@ def handle_download_file(username, filename):
     """Handles downloading a file from the server. Returns the formatted http response"""
     return HTTPResponses.NOT_IMPLEMENTED
 
+def handle_delete(username, filename):
+    """Handles calling delete <filename> from the file server. Returns the formatted http response"""
+    fs_response = talk_to_file_server(username, f"DELETE {filename}")
+    if fs_response is not None:
+        response = build_http_response(200, "OK", fs_response, "application/octet-stream")
+    else:
+        response = HTTPResponses.BAD_GATEWAY
+    return response
+
 def parse_pathquery(path_in):
     """
     Parses a path and returns the path and query if there is one
@@ -215,8 +224,8 @@ def handle_client(conn, addr):
                 response = HTTPResponses.UNAUTHORIZED
         elif path == "/api/delete" and method == "DELETE":
             if username:
-                # delete specified file
-                response = HTTPResponses.NOT_IMPLEMENTED
+                filename = query.get("file")
+                response = handle_delete(username, filename)
             else:
                 response = HTTPResponses.UNAUTHORIZED
         else:
