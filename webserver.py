@@ -52,9 +52,9 @@ def build_http_response(status_code=200, status_text="OK", body="", content_type
 class HTTPResponses:
     UNAUTHORIZED = build_http_response(401, "Unauthorized", "Unauthorized", "text/plain")
     NOT_FOUND = build_http_response(404, "Not Found", "Not Found", "text/plain")
+    INTERNAL_SERVER_ERROR = build_http_response(500, "Internal Server Error", "Internal Server Error", "text/plain")
     NOT_IMPLEMENTED = build_http_response(501, "Not Implemented", "Not Implemented", "text/plain")
     BAD_GATEWAY = build_http_response(502, "Bad Gateway", "File server error", "text/plain")
-
 
 def login_fileserver(username, fileserver_socket):
     '''Attempts to login a user to the fileserver'''
@@ -81,9 +81,9 @@ def send_command(command, username, fileserver_socket):
 def talk_to_file_server(username: str, command: str):
     '''Establish a connection between the webserver and file server. Webserver sends a command to the fileserver as a user and receives a response'''
     try:
-        fileserver_socket = sock.create_connection((FILESERVER_HOST, FILESERVER_PORT))
-        response = send_command(command, username, fileserver_socket) # Send command to fileserver and save the response
-        return response
+        with sock.create_connection((FILESERVER_HOST, FILESERVER_PORT)) as fileserver_socket:
+            response = send_command(command, username, fileserver_socket)
+            return response
     except Exception as e:
         print(f"[ERROR] File server connection failed: {e}")
         return None
@@ -111,6 +111,58 @@ def handle_delete(username, filename):
     else:
         response = HTTPResponses.BAD_GATEWAY
     return response
+
+def handle_download(username, filename):
+    """Handles calling the get <filename> from the file server. Returns the formatted http response"""
+    try:
+        with sock.create_connection((FILESERVER_HOST, FILESERVER_PORT)) as fileserver_socket:
+            login_fileserver(username, fileserver_socket) # Login as user
+
+            fileserver_socket.sendall(f"GET {filename}\n".encode()) # Send initial Command
+
+            server_resp = fileserver_socket.recv(1024).decode() # Expect READY back from server
+            if not server_resp.startswith("READY"):
+                return HTTPResponses.NOT_FOUND
+            tokens = server_resp.split() # Check for correct number of tokens
+            if len(tokens) != 3:
+                return HTTPResponses.INTERNAL_SERVER_ERROR
+
+            incoming_filename = tokens[1]
+            filesize = int(tokens[2])
+
+            fileserver_socket.sendall("OK\n".encode()) # ping server OK
+            server_resp = fileserver_socket.recv(1024).decode() # last shake from server
+            fileserver_socket.sendall("OK\n".encode()) # ping server OK
+
+            # Receive in the file
+            file_data = bytearray()
+            received = 0
+            while received < filesize:
+                packet = fileserver_socket.recv(min(1024, filesize - received))
+                if not packet:
+                    break
+                file_data.extend(packet)
+                received += len(packet)
+                fileserver_socket.sendall("CONTINUE\n".encode()) # ping server to continue download
+
+            fileserver_socket.sendall("DONE\n".encode("utf-8")) # ping server so it knows we are DONE
+           
+            # Add new headers to our response
+            headers = [
+                 # this header isn't necessary for the implementation, but I liked having access 
+                 #  to the filename while testing with Insomnia
+                ("Content-Disposition", f'attachment; filename="{incoming_filename}"'),
+            ]
+            
+            response = build_http_response(200, "OK", body=file_data, headers=headers)
+            return response
+    
+    except Exception as e:
+        #print(f"[ERROR] File server connection failed: {e}")
+        return HTTPResponses.INTERNAL_SERVER_ERROR
+
+def handle_upload(username, filename):
+    pass
 
 def parse_pathquery(path_in):
     """
@@ -208,10 +260,10 @@ def handle_client(conn, addr):
         elif path == "/api/get" and method == "GET":
             if username:
                 filename = query.get("file")
-                response = handle_download_file(username, filename)
+                response = handle_download(username, filename)
                 ####
                 ####
-                response = HTTPResponses.NOT_IMPLEMENTED
+                #response = HTTPResponses.NOT_IMPLEMENTED
                 ####
                 ####
             else:
