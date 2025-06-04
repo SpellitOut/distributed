@@ -99,7 +99,7 @@ function createFileTableRow(line) {
   const parts = line.split(" - ");
   if (parts.length < 3) return null;
 
-  const filename = parts[0].trim();
+  const filename = decodeURIComponent(parts[0].trim());
   const sizeBytesMatch = parts[1].match(/(\d+)\s+bytes/);
   const sizeBytes = sizeBytesMatch ? parseInt(sizeBytesMatch[1]) : 0;
   const sizeMB = (sizeBytes / (1024 * 1024)).toFixed(2);
