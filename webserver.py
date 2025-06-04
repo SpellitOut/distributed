@@ -327,6 +327,13 @@ def receive_http_request(conn):
     return method, path_in, headers, content_length, body
 
 def handle_client(conn, addr):
+    """
+    handle_client() attempts to receive an HTTP Request from socket conn and parses the request.
+    If a valid request exists it processes the request and passes off to helper functions accordingly.
+
+    Send a valid HTTP Response back to socket conn
+    
+    """
     try:
 
         method, path_in, headers, content_length, body = receive_http_request(conn)
@@ -338,6 +345,7 @@ def handle_client(conn, addr):
         username = cookies.get("username") # Get username (if logged in)
 
         if path == "/" and method == "GET":
+            # Load html for webpage
             if os.path.exists("index.html"):
                 with open("index.html", "r") as f:
                     response = build_http_response(200, "OK", body=f.read(), content_type="text/html")
@@ -345,6 +353,7 @@ def handle_client(conn, addr):
             else:
                 response = HTTPResponses.NOT_FOUND
         elif path == "/style.css" and method == "GET":
+            # Load stylesheet for webpage
             if os.path.exists("style.css"):
                 with open("style.css", "r") as f:
                     response = build_http_response(200, "OK", body=f.read(), content_type="text/css")
@@ -352,6 +361,7 @@ def handle_client(conn, addr):
             else:
                 response = HTTPResponses.NOT_FOUND
         elif path == "/script.js" and method == "GET":
+            # Load Javascript file for webpage
             if os.path.exists("script.js"):
                 with open("script.js", "r") as f:
                     response = build_http_response(200, "OK", body=f.read(), content_type="application/javascript")
@@ -359,19 +369,23 @@ def handle_client(conn, addr):
             else:
                 response = HTTPResponses.NOT_FOUND
         elif path == "/api/login":
-            if method == "POST": # User trying to Login
+            # User attempting login
+            if method == "POST":
                 response = handle_login(body)
-            elif method == "DELETE": # User trying to Logout
+            # User trying to Logout    
+            elif method == "DELETE": 
                 response = handle_logout()
             else:
                 response = HTTPResponses.NOT_FOUND
         elif path == "/api/list" and method == "GET":
             if username:
+                # list command from server
                 response = handle_get_list(username)
             else:
                 response = HTTPResponses.UNAUTHORIZED
         elif path == "/api/get" and method == "GET":
             if username:
+                # download a file from the server
                 filename = query.get("file")
                 response = handle_download(username, filename)
             else:
@@ -381,15 +395,11 @@ def handle_client(conn, addr):
                 # upload a new file on the server
                 filename = query.get("file")
                 response = handle_upload(username, filename, content_length, body)
-                ####
-                #### NEED TO GET THE BODY OF THE POST, as well as Content-Length
-                #### AND PASS THAT INTO handle_upload
-                ####
-                #response = HTTPResponses.NOT_IMPLEMENTED
             else:
                 response = HTTPResponses.UNAUTHORIZED
         elif path == "/api/delete" and method == "DELETE":
             if username:
+                # delete a file from the server
                 filename = query.get("file")
                 response = handle_delete(username, filename)
             else:
@@ -397,6 +407,7 @@ def handle_client(conn, addr):
         else:
             response = HTTPResponses.NOT_FOUND
 
+        # Send back HTTP Response to client
         conn.sendall(response)   
 
     except ValueError as e:
