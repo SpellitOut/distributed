@@ -1,7 +1,11 @@
 function login() {
+    /*
+    login() attempts to login a user by sending an HTTP request to the webserver
+    */
     const xhr = new XMLHttpRequest();
     const username = document.getElementById("username").value;
     xhr.open("POST", "/api/login", true);
+    xhr.withCredentials = true
     xhr.setRequestHeader("Content-Type", "text/plain");
     xhr.onreadystatechange = function () {
         if (xhr.readyState === XMLHttpRequest.DONE) {
@@ -16,8 +20,12 @@ function login() {
 }
 
 function logout() {
+    /*
+    logout() logs out a user by sending an HTTP request to the webserver
+    */
     const xhr = new XMLHttpRequest();
     xhr.open("DELETE", "/api/login", true);
+    xhr.withCredentials = true
     xhr.onreadystatechange = function () {
         if (xhr.readyState === XMLHttpRequest.DONE) {
                 alert(xhr.responseText);
