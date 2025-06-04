@@ -109,7 +109,10 @@ def handle_delete(username, filename):
     """Handles calling delete <filename> from the file server. Returns the formatted http response"""
     fs_response = talk_to_file_server(username, f"DELETE {filename}")
     if fs_response is not None:
-        response = build_http_response(200, "OK", fs_response, "application/octet-stream")
+        if not fs_response.startswith("Permission"):
+            response = build_http_response(200, "OK", fs_response, "application/octet-stream")
+        else:
+            response = HTTPResponses.UNAUTHORIZED
     else:
         response = HTTPResponses.BAD_GATEWAY
     return response
@@ -375,6 +378,12 @@ def handle_client(conn, addr):
             # User trying to Logout    
             elif method == "DELETE": 
                 response = handle_logout()
+            # Check if logged in
+            elif method == "GET":
+                if username:
+                    response = build_http_response(200, "OK", username, "text/plain")
+                else:
+                    response = HTTPResponses.UNAUTHORIZED
             else:
                 response = HTTPResponses.NOT_FOUND
         elif path == "/api/list" and method == "GET":

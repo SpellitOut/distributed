@@ -406,24 +406,26 @@ def handleClient(clientSocket, myClients, clientStates, clientBuffers, loggedInC
 
         # Client has requested a file download
         elif client["state"] == ClientState.SENDING_FILE:
-            # Open the file for reading bytes
-            filepath = os.path.join(SERVER_FILE_PATH, client["filename"])
-            with open(filepath, "rb") as f:
-                f.seek(client["sentbytes"])
-                packet = f.read(1024)
-                if packet:
-                    clientSocket.sendall(packet)
-                    client["sentbytes"] += len(packet)
-                else:
-                    # File sent
-                    print(f"File sent: {client['filename']}")
-                    # Clean up states
-                    clientBuffers[clientSocket] = b""
-                    client["state"] = ClientState.WAITING
-                    client["filename"] = None
-                    client["filesize"] = None
-                    client["sentbytes"] = 0
-
+            try:
+                # Open the file for reading bytes
+                filepath = os.path.join(SERVER_FILE_PATH, client["filename"])
+                with open(filepath, "rb") as f:
+                    f.seek(client["sentbytes"])
+                    packet = f.read(1024)
+                    if packet:
+                        clientSocket.sendall(packet)
+                        client["sentbytes"] += len(packet)
+                    else:
+                        # File sent
+                        print(f"File sent: {client['filename']}")
+                        # Clean up states
+                        clientBuffers[clientSocket] = b""
+                        client["state"] = ClientState.WAITING
+                        client["filename"] = None
+                        client["filesize"] = None
+                        client["sentbytes"] = 0
+            except ConnectionResetError as e:
+                print(f"Client disconnected abrubtly.")
     except (ConnectionResetError, BrokenPipeError):
         clientDisconnect(clientSocket, myClients, clientStates, clientBuffers, loggedInClients)
     except Exception as e:

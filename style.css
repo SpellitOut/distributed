@@ -1,16 +1,10 @@
-
-/*
-body {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    margin: 0;
-    font-family: sans-serif;
+#fileTable {
+    border-collapse: collapse;
+    width: 50%;
 }
 
-h1 {
-    color: darkgreen;
+#fileTable th,
+#fileTable td {
+    padding: 10px;
+    text-align: left;
 }
-*/

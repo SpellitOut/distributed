@@ -13,11 +13,59 @@
         <p>Enter a username and click Login:</p>
         <input type="text" id="username" placeholder="Enter a username">
         <button onclick="login()">Login</button>
-        <button onclick="logout()">Logout</button>
     </div>
 
-    <div id="logged_in">
-        <h1>YOU ARE LOGGED IN</h1>
+    <div id="logged_in" style="display: none;">
+        <h1 id="welcome_message">Welcome, user</h1>
+
+        <h2>File Operations</h3>
+
+        <div style="margin-bottom: 10px;">
+            
+            <button onclick="list()">Refresh File List</button>
+        </div>
+
+    <div id="fileTableWrapper" style="display: none;">
+    <table id="fileTable" border="1">
+        <thead>
+        <tr>
+            <th>Filename</th>
+            <th>Owner</th>
+            <th>Size (MB)</th>
+            <th>Timestamp</th>
+            <th>Actions</th>
+        </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+    </div>
+
+    <p id="emptyMessage">
+    There are no files on the server.
+    </p>
+
+        <div style="margin-bottom: 10px;">
+            <h3>Upload File</h3>
+            <button onclick="choose_file()">Choose File</button>
+        </div>
+
+        <div style="margin-bottom: 10px;">
+            <h3>Download File</h3>
+            <input type="text" id="download_field" placeholder="Enter a filename to download" style="width: 300px;">
+            <button onclick="choose_file()">Download</button>
+        </div>
+
+        <div style="margin-bottom: 10px;">
+            <h3>Delete File</h3>
+            <input type="text" id="delete_field" placeholder="Enter a filename to delete" style="width: 300px;">
+            <button onclick="delete_file()">Delete</button>
+        </div>
+
+        <!--LOGOUT BUTTON-->
+        <div style="margin-top: 50px;">
+            <button onclick="logout()">Logout</button>
+        </div>
+
     </div>
 
     <script src="script.js"></script>
