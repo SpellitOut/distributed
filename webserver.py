@@ -183,6 +183,8 @@ def handle_upload(username, filename, filesize, body):
             fileserver_socket.sendall(f"PUSH {filename}\n".encode()) # Send the initial command
 
             server_resp = fileserver_socket.recv(1024).decode("utf-8") # Expect READY from the server
+            if server_resp.startswith("Permission"):
+                return HTTPResponses.UNAUTHORIZED
             if not server_resp.startswith("READY"):
                 return HTTPResponses.INTERNAL_SERVER_ERROR
             print(f"Pushing file: {filename}\n")

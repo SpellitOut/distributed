@@ -170,3 +170,39 @@ function set_logged_in(logged_in, username="") {
         document.getElementById("welcome_message").textContent = `Welcome ${username}`;
     }
 }
+
+let selectedFile = null;
+
+function handleFileSelected() {
+  const fileInput = document.getElementById("fileInput");
+  if (fileInput.files.length > 0) {
+    selectedFile = fileInput.files[0];
+    document.getElementById("selectedFilename").textContent = selectedFile.name;
+  } else {
+    selectedFile = null;
+    document.getElementById("selectedFilename").textContent = "No file chosen";
+  }
+}
+
+function uploadFile() {
+  if (!selectedFile) {
+    alert("Please select a file first.");
+    return;
+  }
+
+  const xhr = new XMLHttpRequest();
+  xhr.open("POST", "/api/push?file=" + encodeURIComponent(selectedFile.name), true);
+
+  xhr.onload = function () {
+    if (xhr.status === 200) {
+      alert("File uploaded successfully.");
+      list(); // Optionally refresh file list
+    } else if (xhr.status === 401) {
+        alert("Permission denied. You can not overwrite a file you do not own.")
+    } else {
+        alert("Upload failed.");
+    }
+  };
+
+  xhr.send(selectedFile);
+}
