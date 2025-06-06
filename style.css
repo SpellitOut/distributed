@@ -1,10 +1,103 @@
-#fileTable {
-    border-collapse: collapse;
-    width: 50%;
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #333;
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
-#fileTable th,
-#fileTable td {
+
+#logged_in, #logged_out {
+    width: 100%;
+    max-width: 800px;
+    text-align: center;
+}
+
+input[type="text"] {
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 14px;
+    width: 300px;
+    margin-top: 5px;
+}
+
+button {
+    padding: 8px 14px;
+    background-color: #45a968;
+    border: none;
+    color: white;
+    font-weight: bold;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 5px;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.logout-button {
+    background-color: #c94233; /* red */
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.logout-button:hover {
+    background-color: rgb(133, 41, 30); /* darker red on hover */
+}
+
+button:hover {
+    background-color: #2c6e43;
+}
+
+#fileTableWrapper {
+    margin: 0 auto;
+    width: 100%;
+    max-width: 800px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    background-color: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+table thead {
+    background-color: #70c78f;
+    color: white;
+}
+
+table th, table td {
     padding: 10px;
     text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+table tbody tr:hover {
+    background-color: #f2f2f2;
+}
+
+td button {
+    margin-right: 5px;
+}
+
+#emptyMessage, #selectedFilename {
+    color: #666;
+    margin-top: 5px;
+    font-style: italic;
+}
+
+div {
+    margin-bottom: 20px;
+}
+
+#logged_in > div:last-child {
+    text-align: center;
 }

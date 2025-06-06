@@ -61,6 +61,10 @@ function check_login_status() {
 }
 
 function list() {
+  /*
+  Request the file list from the server,
+  creates a table of files to display on the webpage
+  */
   const xhr = new XMLHttpRequest();
   xhr.open("GET", "/api/list", true);
 
@@ -96,6 +100,9 @@ function list() {
 }
 
 function createFileTableRow(line) {
+  /*
+  Creates a formatted row for the file-table on the webpage. Takes in a line and formats it to the expected format
+  */
   const parts = line.split(" - ");
   if (parts.length < 3) return null;
 
@@ -124,37 +131,34 @@ function createFileTableRow(line) {
 }
 
 function createCell(text) {
+  /*
+  Helper function to create a single cell in the file-table
+  */ 
   const td = document.createElement("td");
   td.textContent = text;
   return td;
 }
 
 function createDownloadButton(filename) {
+  /*
+  Create a download button in the table
+  */
   const btn = document.createElement("button");
   btn.textContent = "Download";
   btn.onclick = function () {
-    window.location.href = "/api/get?file=" + encodeURIComponent(filename);
+    download_file(filename);
   };
   return btn;
 }
 
 function createDeleteButton(filename) {
+  /*
+  Create a delete button in the table
+  */
   const btn = document.createElement("button");
   btn.textContent = "Delete";
   btn.onclick = function () {
-    if (confirm(`Are you sure you want to delete "${filename}"?`)) {
-      const xhrDelete = new XMLHttpRequest();
-      xhrDelete.open("DELETE", "/api/delete?file=" + encodeURIComponent(filename), true);
-      xhrDelete.onload = function () {
-        if (xhrDelete.status === 200) {
-          alert(`Deleted "${filename}" successfully.`);
-          list();
-        } else {
-          alert(`Failed to delete "${filename}".`);
-        }
-      };
-      xhrDelete.send();
-    }
+    delete_file(filename);
   };
   return btn;
 }
@@ -167,13 +171,16 @@ function set_logged_in(logged_in, username="") {
     document.getElementById("logged_out").style.display = logged_in ? "none" : "block";
 
     if (logged_in) {
-        document.getElementById("welcome_message").textContent = `Welcome ${username}`;
+        document.getElementById("welcome_message").textContent = `Welcome ${username}, to TreeDrive File Sharing`;
     }
 }
 
 let selectedFile = null;
 
 function handleFileSelected() {
+  /*
+  Handles selecting a file for upload
+  */
   const fileInput = document.getElementById("fileInput");
   if (fileInput.files.length > 0) {
     selectedFile = fileInput.files[0];
@@ -185,6 +192,9 @@ function handleFileSelected() {
 }
 
 function uploadFile() {
+  /*
+  Uploads a selected file to the server
+  */
   if (!selectedFile) {
     alert("Please select a file first.");
     return;
@@ -205,4 +215,51 @@ function uploadFile() {
   };
 
   xhr.send(selectedFile);
+}
+
+function delete_file(filenameFromButton = null) {
+  /*
+  Delete a file based on the name filled out in the delete_field on webpage
+  */
+  const filename = filenameFromButton || document.getElementById("delete_field").value.trim();
+  if (!filename) {
+    alert("Please enter a filename to delete.");
+    return;
+  }
+
+  if (!confirm(`Are you sure you want to delete "${filename}"?`)) return;
+
+  const xhr = new XMLHttpRequest();
+  xhr.open("DELETE", "/api/delete?file=" + encodeURIComponent(filename), true);
+  xhr.onload = function () {
+    if (xhr.status === 200) {
+      alert(`Deleted "${filename}" successfully.`);
+      list();
+      if (!filenameFromButton) {
+        document.getElementById("delete_field").value = "";
+      }
+    } else if (xhr.status === 404) {
+      alert(`File "${filename}" not found.`);
+    } else if (xhr.status === 401) {
+      alert("Permission denied. You can not delete a file you do not own.");
+    } else {
+      alert(`Failed to delete "${filename}". Server responded with status ${xhr.status}.`);
+    }
+  };
+  xhr.send();
+}
+
+function download_file(filenameFromButton = null) {
+  /*
+  Download a selected file. Can be passed as parameter, or if the download field is filled
+  */
+  const filename = filenameFromButton || document.getElementById("download_field").value.trim();
+  if (!filename) {
+    alert("Please enter a filename to download.");
+    return;
+  }
+
+  if (!confirm(`Download "${filename}"?`)) return;
+
+  window.location.href = "/api/get?file=" + encodeURIComponent(filename);
 }

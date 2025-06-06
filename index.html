@@ -59,6 +59,13 @@
         <button onclick="uploadFile()" style="margin-left: 10px;">Upload</button>
     </div>
 
+    <!--DOWNLOAD FILE-->
+    <div style="margin-bottom: 10px;">
+        <h3>Download File</h3>
+        <input type="text" id="download_field" placeholder="Enter a filename to download" style="width: 300px;">
+        <button onclick="download_file()">Download</button>
+    </div>
+
     <!--DELETE FILE-->
     <div style="margin-bottom: 10px;">
         <h3>Delete File</h3>
@@ -68,7 +75,7 @@
 
     <!--LOGOUT BUTTON-->
     <div style="margin-top: 50px;">
-        <button onclick="logout()">Logout</button>
+        <button class="logout-button" onclick="logout()">Logout</button>
     </div>
 
     <script src="script.js"></script>
