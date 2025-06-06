@@ -13,6 +13,8 @@ FILESERVER_HOST = '127.0.0.1'
 FILESERVER_PORT = 8270
 #-------------------------------
 
+CHUNK_SIZE = 8192
+
 def build_http_response(status_code=200, status_text="OK", body="", content_type="text/plain", headers=None):
     """
     Constructs a complete HTTP response message.
@@ -125,6 +127,7 @@ def handle_download(username, filename):
     """ 
     try:
         with sock.create_connection((FILESERVER_HOST, FILESERVER_PORT)) as fileserver_socket:
+            fileserver_socket.settimeout(60) #
             login_fileserver(username, fileserver_socket) # Login as user
 
             fileserver_socket.sendall(f"GET {filename}\n".encode()) # Send initial Command
@@ -178,6 +181,7 @@ def handle_upload(username, filename, filesize, body):
     """
     try:
         with sock.create_connection((FILESERVER_HOST, FILESERVER_PORT)) as fileserver_socket:
+            fileserver_socket.settimeout(60) # seconds
             login_fileserver(username, fileserver_socket) # Login as user
 
             fileserver_socket.sendall(f"PUSH {filename}\n".encode()) # Send the initial command
@@ -198,8 +202,9 @@ def handle_upload(username, filename, filesize, body):
             # Send the file
             sent_bytes = 0
             while sent_bytes < filesize:
-                fileserver_socket.sendall(body[sent_bytes:sent_bytes+1024])
-                sent_bytes += 1024
+                end = min(sent_bytes + CHUNK_SIZE, filesize)
+                fileserver_socket.sendall(body[sent_bytes:end])
+                sent_bytes = end
 
             server_resp = fileserver_socket.recv(1024).decode() # final shake
             print(f"Server Response: {server_resp}")
@@ -325,9 +330,12 @@ def receive_http_request(conn):
     method, path_in, headers = parse_http_request(header_lines)
 
     # If there is a body, we need to get content length, then read the rest of the body
-    content_length = int(headers.get("Content-Length", 0)) # defaults to 0 if we don't get
+    content_length = int(headers.get("Content-Length", 0))
     while len(body) < content_length:
-        body += conn.recv(min(1024, content_length - len(body))) # receive more body bytes
+        chunk = conn.recv(min(CHUNK_SIZE, content_length - len(body)))
+        if not chunk:
+            break  # connection closed prematurely
+        body += chunk
 
     return method, path_in, headers, content_length, body
 

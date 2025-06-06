@@ -34,6 +34,8 @@ import json
 import os
 from datetime import datetime     #Used for timestamps
 
+CHUNK_SIZE = 65536
+
 """Constants"""
 SERVER_SELECT_TIMEOUT = 5
 SERVER_FILE_PATH = "ServerFiles"
@@ -250,17 +252,19 @@ def handleClient(clientSocket, myClients, clientStates, clientBuffers, loggedInC
 
     """
     try:
-        data = clientSocket.recv(1024)
+        data = clientSocket.recv(CHUNK_SIZE)
         if not data:
             clientDisconnect(clientSocket, myClients, clientStates, clientBuffers, loggedInClients)
             return
-
+        
         clientBuffers[clientSocket] += data     #update buffers
 
         client = clientStates[clientSocket]
         buffer = clientBuffers[clientSocket]
         # Get client current state
         state = client["state"]
+
+
 
         # Server says Client is LOGGED_OUT
         if state == ClientState.LOGGED_OUT:
@@ -357,9 +361,15 @@ def handleClient(clientSocket, myClients, clientStates, clientBuffers, loggedInC
             try:
                 filesize = int(line.decode("utf-8").strip())
                 client["filesize"] = filesize
-                client["state"] = ClientState.RECEIVING_FILE
-                client["filebytes"] = b""
+                client["received"] = 0
+
+                filename = client["filename"]
+                # Save the received file
+                filePath = os.path.join(SERVER_FILE_PATH, filename)
+                client["filehandle"] = open(filePath, "wb") # Open file here for writing
+
                 clientSocket.sendall(b"OK\n")
+                client["state"] = ClientState.RECEIVING_FILE
                 print(f"File size: {filesize} bytes\n")
             except ValueError:
                 clientSocket.sendall(b"Error: Invalid filesize.\n")
@@ -367,17 +377,20 @@ def handleClient(clientSocket, myClients, clientStates, clientBuffers, loggedInC
 
         # Client has sent the filesize, server now waiting on the file
         elif client["state"] == ClientState.RECEIVING_FILE:
-            expectedSize = client["filesize"]
-            client["filebytes"] += buffer
-            clientBuffers[clientSocket] = b"" #empty out the temp buffer
-            if len(client["filebytes"]) < expectedSize:
-                return  # have not received the full file yet
+
+            remaining = client["filesize"] - client["received"]
+            to_write = data[:remaining]
+            client["filehandle"].write(to_write)
+            client["received"] += len(to_write)
+
+            if client["received"] < client["filesize"]:
+                return # Still more to receive
+            
+            # File fully received
+            client["filehandle"].close()
+            client["filehandle"] = None
 
             filename = client["filename"]
-            # Save the received file
-            filePath = os.path.join(SERVER_FILE_PATH, filename)
-            with open(filePath, "wb") as f:
-                f.write(client["filebytes"])
             addMetadata(filename, owner=loggedInClients[clientSocket])
 
             clientSocket.sendall(f"File '{filename}' uploaded successfully.\n".encode("utf-8"))
@@ -411,7 +424,7 @@ def handleClient(clientSocket, myClients, clientStates, clientBuffers, loggedInC
                 filepath = os.path.join(SERVER_FILE_PATH, client["filename"])
                 with open(filepath, "rb") as f:
                     f.seek(client["sentbytes"])
-                    packet = f.read(1024)
+                    packet = f.read(CHUNK_SIZE)
                     if packet:
                         clientSocket.sendall(packet)
                         client["sentbytes"] += len(packet)

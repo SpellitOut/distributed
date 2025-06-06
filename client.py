@@ -17,6 +17,8 @@ client.py
 import socket
 import os
 
+CHUNK_SIZE = 65536
+
 #-------------------------------
 #Load the configured Host and Port for server socket to bind to
 HOST = 'localhost'    # The remote host
@@ -96,7 +98,7 @@ def push(clientSocket, filename):
         clientSocket.sendall(f"PUSH {filename}\n".encode("utf-8"))
 
         #Wait for okay from server
-        response = clientSocket.recv(1024).decode("utf-8")
+        response = clientSocket.recv(CHUNK_SIZE).decode("utf-8")
         if not response.strip() == "READY":
             print(f"Error: {response}'\n")
             return
@@ -107,17 +109,17 @@ def push(clientSocket, filename):
         clientSocket.sendall(f"{filesize}\n".encode("utf-8"))
 
         #Wait for okay from server
-        response = clientSocket.recv(1024).decode("utf-8")
+        response = clientSocket.recv(CHUNK_SIZE).decode("utf-8")
         if not response.strip() == "OK":
             print(f"Error: {response}'\n")
             return
         
         # Send file as raw bytes
         with open(filename, "rb") as f:
-            while packet := f.read(1024):
+            while packet := f.read(CHUNK_SIZE):
                 clientSocket.sendall(packet)
 
-        response = clientSocket.recv(1024).decode("utf-8")
+        response = clientSocket.recv(CHUNK_SIZE).decode("utf-8")
         print(response.strip() + "\n")
 
     except Exception as e:
@@ -132,7 +134,7 @@ def get(clientSocket, filename):
         clientSocket.sendall(f"GET {filename}\n".encode("utf-8"))
 
         #Wait for okay from server
-        response = clientSocket.recv(1024).decode("utf-8")
+        response = clientSocket.recv(CHUNK_SIZE).decode("utf-8")
         if not response.startswith("READY"):
             print(f"Error: {response}\n")
             return
@@ -146,7 +148,7 @@ def get(clientSocket, filename):
         clientSocket.sendall(f"OK\n".encode("utf-8"))
 
         # receive last response
-        response = clientSocket.recv(1024).decode("utf-8")
+        response = clientSocket.recv(CHUNK_SIZE).decode("utf-8")
         
         # ping server OK
         clientSocket.sendall(f"OK\n".encode("utf-8"))
@@ -156,7 +158,7 @@ def get(clientSocket, filename):
             received = 0
             f.seek(received)
             while received < filesize:
-                packet = clientSocket.recv(min(1024, filesize - received)) #since client is blocking, we need to take the min INCASE transmission ends
+                packet = clientSocket.recv(min(CHUNK_SIZE, filesize - received)) #since client is blocking, we need to take the min INCASE transmission ends
                 if not packet:
                     break
                 f.write(packet)
@@ -180,7 +182,7 @@ try:
     clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     clientSocket.connect((HOST, PORT))
 
-    data = clientSocket.recv(1024) #receive first message from server
+    data = clientSocket.recv(CHUNK_SIZE) #receive first message from server
     print(data.decode('utf-8'))
 
     while True:
@@ -204,7 +206,7 @@ try:
                 payload = clientInput + "\n"
                 clientSocket.sendall(payload.encode("utf-8")) # we only send a command to the server when it is deemed valid client-side
                 # Receive server response
-                data = clientSocket.recv(1024)
+                data = clientSocket.recv(CHUNK_SIZE)
 
                 if command == "LOGIN":  # Client doesn't care if the user attempts to login more than once
                                         # Server will tell us if they are trying to login more than once
