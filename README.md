@@ -85,11 +85,13 @@ Right at the top of `webserver.py` you will see these lines of code:
     PORT = 8271
 
     # Load the configured Host and Port for server socket for webserver to connect to
-    FILESERVER_HOST = '127.0.0.1'
+    FILESERVER_HOST = '130.179.x.x'
     FILESERVER_PORT = 8270
     #-------------------------------
 
 You will need to change the `FILESERVER_HOST` and `FILESERVER_PORT` to match the ip of your server's host machine, as well as the port that the server is running on. On unix based machines, you can find the IPv4 address using `ip a` in your terminal.
+
+Please ensure that `index.html`, `script.js`, and `style.css` are stored in the same directory as the webserver so that the Web-Client runs properly.
 
 **Note:** by default, the `FILESERVER_PORT` is  `8270`, which is the default also configured in `server.py`. If you change the port in `server.py` you must ensure `FILESERVER_PORT` matches.
 
@@ -141,7 +143,7 @@ In your address bar navigate to:
 
 Replace `bird` with the aviary bird that `webserver.py` is running on.
 
-Replace `port` with the port that `webserver.py` is running on.
+Replace `port` with the port that `webserver.py` is running on. By default the webserver runs on port `8271`.
 
 If you have not logged in before you will be presented with a login screen.
 
