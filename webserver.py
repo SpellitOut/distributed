@@ -1,3 +1,15 @@
+"""
+Name:           Ian Spellman
+Student number: 7891649
+Course:         A01 - COMP3010
+Instructor:     Dr. Saulo dos Santos
+
+Assignment 2
+
+webserver.py
+    Binds a webserver to the fileserver. Takes in HTTP Requests and passes them to the fileserver, returning the response to the web-client
+"""
+
 import socket as sock
 import sys
 import threading
